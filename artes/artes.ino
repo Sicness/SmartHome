@@ -41,7 +41,8 @@ void loop()
   IRCheck();
   MotionCheck();
   delay(100);
-  
+ 
+  //tone(8,700,50); 
 }
 
 void IRCheck()
@@ -51,9 +52,17 @@ void IRCheck()
     Serial.println(results.value, HEX);
     switch (results.value)
     {
-      case 0xFFE01F: HoleMotion.mode = SensorMotionOff; break;
-      case 0xFFA857: HoleMotion.mode = SensorMotionOn; break;
-      case 0xFF906F: HoleMotion.mode = SensorMotionDetect; break;
+      case 0xFFE01F: HoleMotion.mode = SensorMotionOff; 
+        Serial.println("HMSoff"); break;
+      case 0xFFA857: HoleMotion.mode = SensorMotionOn;
+        Serial.println("HMSon"); break;
+      case 0xFF906F: HoleMotion.mode = SensorMotionDetect; 
+        Serial.println("HMSdetect");break;
+      //FFA25D
+//FFE21D
+      case 0xFFA25D: Serial.println("VoiceOff"); break;
+      case 0xFFE21D: Serial.println("VoiceOn"); break;
+
     }
     irrecv.resume(); // Receive the next value
   }
@@ -66,9 +75,9 @@ void MotionCheck()
   bool changedState = false;
   
   if ( HoleMotion.mode == SensorMotionOff)
-    { digitalWrite(LED1, LOW); return; }
+    { HoleMotion.state = LOW; digitalWrite(LED1, LOW); return; }
   if ( HoleMotion.mode == SensorMotionOn)
-    { digitalWrite(LED1, HIGH); return; }
+    { HoleMotion.state = HIGH; digitalWrite(LED1, HIGH); return; }
   
   if ( (HoleMotion.state == HIGH) && (state == LOW) && ( millis() - HoleMotion.lastTime > MOTIONTIMEOUT))
   // Switch off sensor and save info
@@ -82,7 +91,7 @@ void MotionCheck()
     HoleMotion.state = state;
     HoleMotion.lastTime = millis();
     changedState = true;
-  }
+   }
   
   // Triger
   if(changedState)
