@@ -1,7 +1,7 @@
 #include <IRremote.h>
 
 #define PMSHole 2
-#define MOTIONTIMEOUT 5000
+#define MOTIONTIMEOUT 15000
 #define LED1 7
 
 #define SensorMotionOff 0
@@ -92,6 +92,9 @@ void MotionCheck()
     HoleMotion.lastTime = millis();
     changedState = true;
    }
+
+  if ( (HoleMotion.state == HIGH) && (state == HIGH) )
+        HoleMotion.lastTime = millis();
   
   // Triger
   if(changedState)
