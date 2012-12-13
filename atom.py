@@ -2,6 +2,7 @@
 
 import serial
 from httplib2 import Http
+import datetime
 
 urlSmart = "http://smart/"
 web = Http()
@@ -13,7 +14,7 @@ except:
 	
 while 1:
 	buf = s.readline()
-	print buf,
+	print datetime.datetime.now(), buf,
 	if buf[:6] == "HMSoff" > 0 :
 		web.request(urlSmart + "objects/?script=SayHoleLightOff") 
 	if buf[:5] == "HMSon" > 0 :
@@ -22,5 +23,15 @@ while 1:
 		web.request(urlSmart + "objects/?script=SayHoleLightDetect") 
 	if buf[:8] == "VoiceOff" > 0 :
 		web.request(urlSmart + "objects/?script=SetNoVoice") 
-	if buf[:7] == "VoiceOn" > 0 :
-		web.request(urlSmart + "objects/?script=SetVoice") 
+	if buf[:7] == "hole ON" > 0 :
+		web.request(urlSmart + "objects/?object=holeMotion&op=m&m=statusChanged&status=1") 
+	if buf[:8] == "hole OFF" > 0 :
+		web.request(urlSmart + "objects/?object=holeMotion&op=m&m=statusChanged&status=0") 
+	if "T=" in buf:
+                t = buf[2:].split('.')
+		web.request(urlSmart + "objects/?object=holeTemp&op=m&m=update&temp="+t[0]+"&tempDec="+t[1][0]) 
+
+	if "FF629D" in buf[:6]:
+		web.request(urlSmart + "objects/?script=sayTemp") 
+	if "FF52AD" in buf[:6]:
+		web.request(urlSmart + "/objects/?script=toSecurityMode") 
