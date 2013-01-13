@@ -49,14 +49,17 @@ def radio():
 		ultra = None
 
 def dispatch(line):
+	""" Parse serial from Arduino """
 	global T, last_IR
+	if line[:2] == b'T=':
+		T = float(line.split(b'=')[1])
 
 	# cheack if it's 'repeat' IR code and this code repeatable
-	if (line == b'FFFFFFFF') and ( last_IR in repeatable_IR):
+	elif (line == b'FFFFFFFF') and ( last_IR in repeatable_IR):
 		line = last_IR		# restore repeated code
 	
 	# Check if line in IR code
-	if line in IR_codes:
+	elif line in IR_codes:
 		IR_codes[line]()	# run fuction, binded on this IR code
 		last_IR = line		# remember code for 'repeat' case
 
