@@ -1,9 +1,11 @@
 # -*- coding: UTF-8 -*-
 
+import objects
 import serial, os
 import subprocess
 
 s = serial.Serial('/dev/ttyUSB0',9600)			# Arduino serial 
+glob = objects.Vars()
 IR_codes = dict()					# Binded funcitions on IR codes
 repeatable_IR = {b'FFE01F', b'FFA857'}			# This IR codes can be repeated
 last_IR = ''						# Last IR received code
@@ -36,7 +38,7 @@ def say(text):
 
 def say_temp():
 	""" Report temperatures state """
-	say("Тепература дома %f" % (T))
+	say("Тепература дома %f" % glob.get('T'))
 
 def radio():
 	""" On/Off radio """
@@ -52,7 +54,7 @@ def dispatch(line):
 	""" Parse serial from Arduino """
 	global T, last_IR
 	if line[:2] == b'T=':
-		T = float(line.split(b'=')[1])
+		glob.set( 'T', float(line.split(b'=')[1]))
 
 	# cheack if it's 'repeat' IR code and this code repeatable
 	elif (line == b'FFFFFFFF') and ( last_IR in repeatable_IR):
@@ -64,8 +66,8 @@ def dispatch(line):
 		last_IR = line		# remember code for 'repeat' case
 
 if __name__ == '__main__':
-init_IR_codes()				# init dict: { IR_CODE : function }
-while True:
-	line = read()
-	print(line)
-	dispatch(line)
+	init_IR_codes()				# init dict: { IR_CODE : function }
+	while True:
+		line = read()
+		print(line)
+		dispatch(line)
