@@ -38,6 +38,7 @@ def say(text):
 
 def say_temp():
 	""" Report temperatures state """
+	print(glob.get('T'))
 	say("Тепература дома %f" % glob.get('T'))
 
 def radio():
@@ -55,6 +56,7 @@ def dispatch(line):
 	global T, last_IR
 	if line[:2] == b'T=':
 		glob.set( 'T', float(line.split(b'=')[1]))
+		print(glob.exist('T'))
 
 	# cheack if it's 'repeat' IR code and this code repeatable
 	elif (line == b'FFFFFFFF') and ( last_IR in repeatable_IR):
