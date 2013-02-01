@@ -53,16 +53,19 @@ class Task:
 class Crontab:
 	def __init__(self):
 		self.tasks = list()
-		self.thread = Thread(target = self.check, args = ())
+		self.thread = Thread(target = self.__check, args = ())
 		self.thread.start()
 
 	def add(self, task):
+		""" Add new task to cron.
+				Task - object of 'Task' class """
 		for t in self.tasks:
 			if t.name == task.name:			# If we alredy have task with this name
 				return -1
 		self.tasks.append(task)
 
 	def remove(self, name):
+		""" Detele task from cron by name """
 		found = None
 		for task in self.tasks:
 			if task.name == name:
@@ -70,15 +73,15 @@ class Crontab:
 		if found != None:
 			self.tasks.remove(found)
 
-	def check(self):
+	def __check(self):
+		""" Cron tick """
 		while True:
-			print('DEBUG: cron interation started')
 			now = datetime.datetime.now()
 			remove = list()
 			for task in self.tasks:
 				if task.when < now:
-					print('DEBUG: task.when < now')
-					task.do()									# TODO: Run in new thread!
+					t = Thread(target = task.do, args= () )
+					t.start()
 					remove.append(task)
 			for task in remove:
 				self.tasks.remove(task)
