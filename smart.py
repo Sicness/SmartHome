@@ -4,7 +4,9 @@ import objects
 import serial, os
 import subprocess
 import config
-import eeml
+import eeml					# for cosm.com
+from log import log
+from log import err
 
 s = serial.Serial('/dev/ttyUSB0',9600)			# Arduino serial 
 cosm = eeml.Cosm(config.API_URL, config.API_KEY)
@@ -22,10 +24,13 @@ def init_IR_codes():
 	IR_codes.update({b'FFE01F' : volume_dec})	# reduce volume
 	IR_codes.update({b'FF906F' : radio})		# On/off radio
 
+
 def cosm_send(id, value):
 	cosm.update([eeml.Data(id, value)])
-	cosm.put()
-
+	try:
+		cosm.put()
+	except:
+		err("Can't send to cosm")
 
 def read():
 	""" Read line from Serial with out \r\n """
@@ -59,8 +64,7 @@ def radio():
 		ultra = None
 
 def onHoleMotion():
-	#say('Движение')
-	pass
+	log('Motion in hole')
 
 ####################################################
 #####        Objects configuration            ######
@@ -97,6 +101,7 @@ def dispatch(line):
 		last_IR = line		# remember code for 'repeat' case
 
 if __name__ == '__main__':
+	log('Smart home started')
 	init_IR_codes()				# init dict: { IR_CODE : function }
 	while True:
 		line = read()
