@@ -6,10 +6,10 @@ import subprocess
 
 s = serial.Serial('/dev/ttyUSB0',9600)			# Arduino serial 
 glob = objects.Vars()
+hole_motion = objects.MotionSensor()
 IR_codes = dict()					# Binded funcitions on IR codes
 repeatable_IR = {b'FFE01F', b'FFA857'}			# This IR codes can be repeated
 last_IR = ''						# Last IR received code
-T = 0							# Temperature at home :)
 ultra = None						# subprocess object for radio player
 
 def init_IR_codes():
@@ -38,7 +38,6 @@ def say(text):
 
 def say_temp():
 	""" Report temperatures state """
-	print(glob.get('T'))
 	say("Тепература дома %f" % glob.get('T'))
 
 def radio():
@@ -51,17 +50,27 @@ def radio():
 		ultra.kill()
 		ultra = None
 
+def onHoleMotion():
+	say('Движение')
+
+hole_motion.onOn = onHoleMotion
+
 def dispatch(line):
 	""" Parse serial from Arduino """
-	global T, last_IR
+	global last_IR
 	if line[:2] == b'T=':
 		glob.set( 'T', float(line.split(b'=')[1]))
-		print(glob.exist('T'))
+
+	elif line == b'hole ON':
+		hole_motion.update(1)
+	elif line == b'hole YES':
+		hole_motion.update(0)
+
 
 	# cheack if it's 'repeat' IR code and this code repeatable
 	elif (line == b'FFFFFFFF') and ( last_IR in repeatable_IR):
 		line = last_IR		# restore repeated code
-	
+
 	# Check if line in IR code
 	elif line in IR_codes:
 		IR_codes[line]()	# run fuction, binded on this IR code

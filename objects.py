@@ -38,7 +38,7 @@ class MotionSensor:
 				self.onChange()
 			if state:
 				if self.onOn != None:
-					self.onOff()
+					self.onOn()
 			else:
 				if self.onOff != None:
 					self.onOff()
