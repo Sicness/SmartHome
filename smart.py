@@ -3,8 +3,11 @@
 import objects
 import serial, os
 import subprocess
+import config
+import eeml
 
 s = serial.Serial('/dev/ttyUSB0',9600)			# Arduino serial 
+cosm = eeml.Cosm(config.API_URL, config.API_KEY)
 glob = objects.Vars()
 hole_motion = objects.MotionSensor()
 IR_codes = dict()					# Binded funcitions on IR codes
@@ -18,6 +21,11 @@ def init_IR_codes():
 	IR_codes.update({b'FFA857' : volume_inc})	# increase volume
 	IR_codes.update({b'FFE01F' : volume_dec})	# reduce volume
 	IR_codes.update({b'FF906F' : radio})		# On/off radio
+
+def cosm_send(id, value):
+	cosm.update([eeml.Data(id, value)])
+	cosm.put()
+
 
 def read():
 	""" Read line from Serial with out \r\n """
@@ -51,15 +59,27 @@ def radio():
 		ultra = None
 
 def onHoleMotion():
-	say('Движение')
+	#say('Движение')
+	pass
+
+####################################################
+#####        Objects configuration            ######
+####################################################
 
 hole_motion.onOn = onHoleMotion
+
+####################################################
+#####            main dispatch                ######
+####################################################
 
 def dispatch(line):
 	""" Parse serial from Arduino """
 	global last_IR
 	if line[:2] == b'T=':
-		glob.set( 'T', float(line.split(b'=')[1]))
+		T = float(line.split(b'=')[1])
+		if T != glob.get('T'):
+			glob.set( 'T', T)
+			cosm_send('temp_hole', T)
 
 	elif line == b'hole ON':
 		hole_motion.update(1)
