@@ -7,12 +7,8 @@ import config
 import eeml					# for cosm.com
 from log import log
 from log import err
+import time
 
-try:
-	s = serial.Serial('/dev/ttyUSB0',9600)			# Arduino serial 
-except:
-	err("Can't open /dev/ttyUSB0: %s Exit." % sys.exc_info()[0])
-	sys.exit("Can't open /dev/ttyUSB0: %s Exit." % sys.exc_info()[0])
 glob = objects.Vars()
 hole_motion = objects.MotionSensor()
 IR_codes = dict()					# Binded funcitions on IR codes
@@ -20,13 +16,25 @@ repeatable_IR = {b'FFE01F', b'FFA857'}			# This IR codes can be repeated
 last_IR = ''						# Last IR received code
 ultra = None						# subprocess object for radio player
 
+def open_serial():
+	global s
+
+	while True:
+		try:
+			s = serial.Serial('/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A80090sP-if00-port0',9600)			# Arduino serial 
+		except:
+			err("Can't open /dev/ttyUSB0: %s" % sys.exc_info()[0])
+			time.sleep(10)
+			continue
+		break
+	return 0
+
 def init_IR_codes():
 	""" Bind functions on IR codes """
 	IR_codes.update({b'FF629D' : say_temp})		# Say temperature status
 	IR_codes.update({b'FFA857' : volume_inc})	# increase volume
 	IR_codes.update({b'FFE01F' : volume_dec})	# reduce volume
 	IR_codes.update({b'FF906F' : radio})		# On/off radio
-
 
 def cosm_send(id, value):
 	'''Send data to Cosm.com
@@ -110,7 +118,9 @@ def dispatch(line):
 
 if __name__ == '__main__':
 	log('Smart home started')
+	open_serial()
 	init_IR_codes()				# init dict: { IR_CODE : function }
+
 	while True:
 		try:
 			line = read()			# read line from arduino
@@ -120,7 +130,7 @@ if __name__ == '__main__':
 			sys.exit(0)
 		except:
 			err("Can't read from serial")
-			time.sleep(0.5)
+			open_serial()
 			continue					# new read interation
 		print(line)
 		dispatch(line)
