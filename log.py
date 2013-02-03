@@ -7,3 +7,4 @@ def log(text):
 
 def err(text):
 	syslog.syslog(syslog.LOG_ERR, text)
+	print('ERROR: ', text)

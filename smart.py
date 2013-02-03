@@ -1,15 +1,18 @@
 # -*- coding: UTF-8 -*-
 
 import objects
-import serial, os
+import serial, os, sys
 import subprocess
 import config
 import eeml					# for cosm.com
 from log import log
 from log import err
 
-s = serial.Serial('/dev/ttyUSB0',9600)			# Arduino serial 
-cosm = eeml.Cosm(config.API_URL, config.API_KEY)
+try:
+	s = serial.Serial('/dev/ttyUSB0',9600)			# Arduino serial 
+except:
+	err("Can't open /dev/ttyUSB0: %s Exit." % sys.exc_info()[0])
+	sys.exit("Can't open /dev/ttyUSB0: %s Exit." % sys.exc_info()[0])
 glob = objects.Vars()
 hole_motion = objects.MotionSensor()
 IR_codes = dict()					# Binded funcitions on IR codes
@@ -26,11 +29,16 @@ def init_IR_codes():
 
 
 def cosm_send(id, value):
+	'''Send data to Cosm.com
+	Can't update data yet, so, used recreate class :( '''
+	cosm = eeml.Cosm(config.API_URL, config.API_KEY)
 	cosm.update([eeml.Data(id, value)])
 	try:
 		cosm.put()
+	except eeml.CosmError as e:
+		err('cosm.put(): {}'.format(e))
 	except:
-		err("Can't send to cosm")
+		err('Unexpected error at cosm.put(): %s' % sys.exc_info()[0])
 
 def read():
 	""" Read line from Serial with out \r\n """
@@ -104,6 +112,15 @@ if __name__ == '__main__':
 	log('Smart home started')
 	init_IR_codes()				# init dict: { IR_CODE : function }
 	while True:
-		line = read()
+		try:
+			line = read()			# read line from arduino
+		except KeyboardInterrupt:
+			log('KeyboardInterrupt received. Exit')
+			print('KeyboardInterrupt received. Bye!\n')
+			sys.exit(0)
+		except:
+			err("Can't read from serial")
+			time.sleep(0.5)
+			continue					# new read interation
 		print(line)
 		dispatch(line)
