@@ -3,6 +3,8 @@
 import objects
 import arduino, os, sys
 import subprocess
+import socket
+from threading import Thread
 import config
 import eeml					# for cosm.com
 from log import log
@@ -15,6 +17,7 @@ IR_codes = dict()					# Binded funcitions on IR codes
 repeatable_IR = {b'FFE01F', b'FFA857'}			# This IR codes can be repeated
 last_IR = ''						# Last IR received code
 ultra = None						# subprocess object for radio player
+
 
 def init_IR_codes():
 	""" Bind functions on IR codes """
@@ -73,7 +76,7 @@ def onArduinoLost():
 
 
 ####################################################
-#####            main dispatch                ######
+#####            main dispatchs               ######
 ####################################################
 
 def dispatch(line):
@@ -100,6 +103,25 @@ def dispatch(line):
 		IR_codes[line]()	# run fuction, binded on this IR code
 		last_IR = line		# remember code for 'repeat' case
 
+def sock_dispatch(s):
+	data = s.recv(1024)
+	print('sock| ', data)
+
+	if data == b'radio':
+		radio()
+	s.sendall(b'OK')
+	s.close()
+
+def sock_listen():
+	srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	srv.bind(("0.0.0.0", 10000))
+	srv.listen(1)
+	while True:
+					s, addr = srv.accept()
+					print('Connection from', addr)
+					sock_disp_thr = Thread(target = sock_dispatch, args = (s,))
+					sock_disp_thr.start()
+
 if __name__ == '__main__':
 	log('Smart home started')
 
@@ -107,6 +129,8 @@ if __name__ == '__main__':
 	ard = arduino.Arduino('/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A80090sP-if00-port0', onFound = onArduinoFound, onLost = onArduinoLost)
 	hole_motion.onOn = onHoleMotion
 	init_IR_codes()				# init dict: { IR_CODE : function }
+	sock_thr = Thread(target = sock_listen, args = ())
+	sock_thr.start()
 
 	#####     main loop     #####
 	while True:
