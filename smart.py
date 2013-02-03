@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 
 import objects
-import serial, os, sys
+import arduino, os, sys
 import subprocess
 import config
 import eeml					# for cosm.com
@@ -15,19 +15,6 @@ IR_codes = dict()					# Binded funcitions on IR codes
 repeatable_IR = {b'FFE01F', b'FFA857'}			# This IR codes can be repeated
 last_IR = ''						# Last IR received code
 ultra = None						# subprocess object for radio player
-
-def open_serial():
-	global s
-
-	while True:
-		try:
-			s = serial.Serial('/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A80090sP-if00-port0',9600)			# Arduino serial 
-		except:
-			err("Can't open /dev/ttyUSB0: %s" % sys.exc_info()[0])
-			time.sleep(10)
-			continue
-		break
-	return 0
 
 def init_IR_codes():
 	""" Bind functions on IR codes """
@@ -47,10 +34,6 @@ def cosm_send(id, value):
 		err('cosm.put(): {}'.format(e))
 	except:
 		err('Unexpected error at cosm.put(): %s' % sys.exc_info()[0])
-
-def read():
-	""" Read line from Serial with out \r\n """
-	return s.readline()[:-2]
 
 def volume_dec(value = 200):
 	""" Reduce system volume """
@@ -82,11 +65,12 @@ def radio():
 def onHoleMotion():
 	log('Motion in hole')
 
-####################################################
-#####        Objects configuration            ######
-####################################################
+def onArduinoFound():
+	say("Связь с Ардуино установлена!")
 
-hole_motion.onOn = onHoleMotion
+def onArduinoLost():
+	say("Утеряна связь с Ардуино! Пытаюсь восстановить связь...")
+
 
 ####################################################
 #####            main dispatch                ######
@@ -118,19 +102,19 @@ def dispatch(line):
 
 if __name__ == '__main__':
 	log('Smart home started')
-	open_serial()
+
+	#####     Objects configuration      ######
+	ard = arduino.Arduino('/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A80090sP-if00-port0', onFound = onArduinoFound, onLost = onArduinoLost)
+	hole_motion.onOn = onHoleMotion
 	init_IR_codes()				# init dict: { IR_CODE : function }
 
+	#####     main loop     #####
 	while True:
 		try:
-			line = read()			# read line from arduino
+			line = ard.read()			# read line from arduino
 		except KeyboardInterrupt:
 			log('KeyboardInterrupt received. Exit')
 			print('KeyboardInterrupt received. Bye!\n')
 			sys.exit(0)
-		except:
-			err("Can't read from serial")
-			open_serial()
-			continue					# new read interation
 		print(line)
 		dispatch(line)
