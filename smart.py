@@ -8,8 +8,8 @@ from threading import Thread
 import time
 import datetime
 
-import eeml                 # for cosm.com
-
+from cosm import Cosm
+import cosm_config
 from log import log
 from log import err
 import arduino
@@ -23,6 +23,7 @@ repeatable_IR = {b'FFE01F', b'FFA857'}          # This IR codes can be repeated
 last_IR = ''                        # Last IR received code
 ultra = None                        # subprocess object for radio player
 cron = objects.Crontab()
+cosm = Cosm(cosm_config.FEED_ID, cosm_config.API_KEY)
 
 
 def init_IR_codes():
@@ -35,7 +36,8 @@ def init_IR_codes():
 def cosm_send(id, value):
     '''Send data to Cosm.com
     Can't update data yet, so, used recreate class :( '''
-    cosm = eeml.Cosm(config.API_URL, config.API_KEY)
+    """
+    cosm = eeml.datastream.Cosm(config.API_URL, config.API_KEY)
     cosm.update([eeml.Data(id, value)])
     try:
         cosm.put()
@@ -43,6 +45,8 @@ def cosm_send(id, value):
         err('cosm.put(): {}'.format(e))
     except:
         err('Unexpected error at cosm.put(): %s' % sys.exc_info()[0])
+    """
+    cosm.put_data_point(id, value)
 
 def volume_dec(value = 200):
     """ Reduce system volume """
@@ -54,12 +58,15 @@ def volume_inc(value = 200):
 
 def say(text):
     """ Text to speech with Google translate """
+    time = datetime.datetime.now().time()
+    if time < datetime.time(hour = 8) and time > datetime.time(hour=23, munute=30):
+        return
     cmd = "wget -q -U Mozilla -O /tmp/say.mp3 \"http://translate.google.com/translate_tts?ie=UTF-8&tl=ru&q=%s\" && mpg123 /tmp/say.mp3" % (text)
     subprocess.Popen(cmd, shell = True)
 
 def say_temp():
     """ Report temperatures state """
-    say("Температура дома %f" % glob.get('T'))
+    say("Температура дома %f" % glob.get('hole_temp'))
 
 def radio():
     """ On/Off radio """
@@ -73,6 +80,7 @@ def radio():
 
 def onHoleMotion():
     log('Motion in hole')
+    return
     if glob.get('noBodyHome') == 1:
         glob.set('noBodyHome', 0)
         say('Добро пожаловать домой')
@@ -86,7 +94,7 @@ def onHoleMotionOff():
     if cron.isExist('noBodyHome'):
         cron.remove('noBodyHome')
     cron.add(objects.Task('noBodyHome', \
-                          datetime.datetime.now() + datetime.timedelta(minutes=1), noBodyHome))
+                          datetime.datetime.now() + datetime.timedelta(hours=3), noBodyHome))
 
 def noBodyHome():
     """ Called by cron when no motion 3 hours"""
@@ -107,11 +115,23 @@ def onArduinoLost():
 def dispatch(line):
     """ Parse serial from Arduino """
     global last_IR
-    if line[:2] == b'T=':
+    if line[:5] == b'Temp=':
+        T = float(line.split(b'=')[1])
+        if T != glob.get('Hole_temp'):
+            glob.set( 'hole_temp', T)
+            cosm_send('Hole_temp', T)
+
+    elif line[:9] == b'Pressure=':
+        pressure = float(line.split(b'=')[1])
+        if pressure != glob.get('hole_pressure'):
+            glob.set( 'hole_pressure', pressure)
+            cosm_send('Hole_pressure', pressure)
+
+    elif line[:2] == b'T=':
         T = float(line.split(b'=')[1])
         if T != glob.get('T'):
             glob.set( 'T', T)
-            cosm_send('temp_hole', T)
+            cosm_send('DS_temp', T)
 
     elif line == b'hole ON':
         hole_motion.update(1)
@@ -161,7 +181,7 @@ if __name__ == '__main__':
     #####     main loop     #####
     while True:
         try:
-            line = ard.read()           # read line from arduino
+            line = ard.read()      # read line from arduino
         except KeyboardInterrupt:
             log('KeyboardInterrupt received. Exit')
             print('KeyboardInterrupt received. Bye!\n')

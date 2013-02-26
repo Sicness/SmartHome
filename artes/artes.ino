@@ -2,26 +2,26 @@
 #include <Wire.h>
 #include <IRremote.h>
 #include <SPI.h>
-#include <Mirf.h>
-#include <nRF24L01.h>
-#include <MirfHardwareSpiDriver.h>
+#include <Adafruit_MPL115A2.h>
 
 #define PMSHole 2
 #define MOTIONTIMEOUT 15000
 //#define LED1 7
 #define SND 9
-OneWire ds(3);
-#define nrf_ce 7
-#define nrf_csn 6
 
 #define SensorMotionOff 0
 #define SensorMotionOn  1
 #define SensorMotionDetect 2
 
-byte ds_addr[8];
+OneWire ds(3);
+Adafruit_MPL115A2 mpl115a2;
+
+/*byte ds_addr[8];
 byte ds_data[12];
 byte ds_present = 0;
 long ds_lastTime = 0;
+*/
+long mpl115a2_lastTime = 99999;  // for run immediately
 
 IRrecv irrecv(8);
 decode_results results;
@@ -38,7 +38,7 @@ void MotionCheck();
 void OnMotionChenged();
 void IRCheck();
 void dsCheck();
-void MirfCheck();
+void mpl115a2Check();
 
 void setup()
 {
@@ -53,13 +53,8 @@ void setup()
   Serial.begin(9600);
   irrecv.enableIRIn();
   
-  Mirf.spi = &MirfHardwareSpi;
-  Mirf.csnPin = nrf_csn;
-  Mirf.cePin = nrf_ce;
-  Mirf.setRADDR((byte *)"Artes");
-  Mirf.payload = sizeof(unsigned long);
-  Mirf.config();
-
+  mpl115a2.begin();
+  /*
   // Init DS1820 temperature sernosor
   if (! ds.search(ds_addr))
   {
@@ -84,18 +79,19 @@ void setup()
       return;
   }
   
+  
   ds_present = ds.reset();
   ds.select(ds_addr);    
   ds.write(0x44);         // Read Scratchpad
   ds_lastTime = millis();
+  */
 }
 
 void loop()
 {
   IRCheck();
   MotionCheck();
-  dsCheck();
-  MirfCheck();
+  //dsCheck(); replaced by mpl115a2
 }
 
 void IRCheck()
@@ -159,7 +155,7 @@ void OnMotionChenged()
     //digitalWrite(LED1, LOW);
   }
 }
-
+/*
 void dsCheck()
 {
   //Serial.println("");
@@ -201,16 +197,19 @@ void dsCheck()
   ds.write(0x44,1);         // new calculation
   ds_lastTime = millis();
 }
+*/
 
-void MirfCheck()
+void mpl115a2Check()
 {
-  if(!(!Mirf.isSending() && Mirf.dataReady()))
+  if (millis() - mpl115a2_lastTime < 10000)
     return;
-  byte data[Mirf.payload];
-  Mirf.getData(data);
-  Serial.println("Mirf done");
-  //Serial.println(;
-  Mirf.setTADDR((byte *)"clie1");
-  Mirf.send(data);
-  Serial.println("OK");
+  mpl115a2_lastTime = millis();
+    
+  float pressureKPA = mpl115a2.getPressure();  
+  Serial.print("Pressure="); Serial.print(pressureKPA, 4); Serial.println(" kPa");
+
+  float temperatureC = mpl115a2.getTemperature();  
+  Serial.print("Temp="); Serial.print(temperatureC, 1); Serial.println(" *C");
+  
+  
 }
