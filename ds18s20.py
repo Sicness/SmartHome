@@ -1,6 +1,10 @@
 # idea and same code I took from:
 # http://learn.adafruit.com/adafruits-raspberry-pi-lesson-11-ds18b20-temperature-sensing/software
 
+# Dependencies:
+# sudo modprobe w1-gpio
+# sudo modprobe w1-therm
+
 from time import sleep
 
 class ds18b20:

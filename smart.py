@@ -5,8 +5,12 @@ import sys
 import subprocess
 import socket
 from threading import Thread
-import time
+from time import sleep
 import datetime
+import urllib
+import Queue
+
+import mplayer
 
 from cosm import Cosm
 import cosm_config
@@ -15,6 +19,8 @@ from log import err
 import arduino
 import objects
 import config
+import ds18s20
+
 
 glob = objects.Vars()
 hole_motion = objects.MotionSensor()
@@ -24,6 +30,12 @@ last_IR = ''                        # Last IR received code
 ultra = None                        # subprocess object for radio player
 cron = objects.Crontab()
 cosm = Cosm(cosm_config.FEED_ID, cosm_config.API_KEY)
+user_agent = ("Mozilla/5.0 (Windows NT 6.1; WOW64) "
+                      "AppleWebKit/537.17 "
+                      "(KHTML, like Gecko) Chrome/24.0.1312.60 Safari/537.17")
+player = mplayer.Player(args=('-user-agent', user_agent))  #, '-ao', 'pulse'))
+player.cmd_predix = ''
+say_queue = Queue.Queue()
 
 
 def init_IR_codes():
@@ -34,19 +46,11 @@ def init_IR_codes():
     IR_codes.update({b'FF906F' : radio})        # On/off radio
 
 def cosm_send(id, value):
-    '''Send data to Cosm.com
-    Can't update data yet, so, used recreate class :( '''
-    """
-    cosm = eeml.datastream.Cosm(config.API_URL, config.API_KEY)
-    cosm.update([eeml.Data(id, value)])
+    '''Send data to Cosm.com'''
     try:
-        cosm.put()
-    except eeml.CosmError as e:
-        err('cosm.put(): {}'.format(e))
+        cosm.put_data_point(id, value)
     except:
-        err('Unexpected error at cosm.put(): %s' % sys.exc_info()[0])
-    """
-    cosm.put_data_point(id, value)
+        print("ERROR: Can't send to cosm.com")
 
 def volume_dec(value = 200):
     """ Reduce system volume """
@@ -56,17 +60,44 @@ def volume_inc(value = 200):
     """ Increase system volume """
     subprocess.Popen("amixer set PCM %d+" % (value), shell = True)
 
-def say(text):
+def _say_queue():
+    while True:
+        try:
+            item = say_queue.get_nowait()
+            # item = (text, lang)
+        except:
+            print "queue is empty"
+            sleep(0.5)
+            continue
+        print "quaue has ", item
+        _say(item[0],item[1])
+        sleep(0.5)
+
+def say(text, language = "ru"):
+    say_queue.put((text, language))
+    print "\""+text+"\" puted"
+
+def _say(text, language = "ru"):
     """ Text to speech with Google translate """
+    """
     time = datetime.datetime.now().time()
     if time < datetime.time(hour = 8) and time > datetime.time(hour=23, munute=30):
         return
     cmd = "wget -q -U Mozilla -O /tmp/say.mp3 \"http://translate.google.com/translate_tts?ie=UTF-8&tl=ru&q=%s\" && mpg123 /tmp/say.mp3" % (text)
     subprocess.Popen(cmd, shell = True)
+    """
+    url = url = (u"http://translate.google.com/"
+                 u"translate_tts?tl={0}&q={1}".format(
+                 language,
+                 urllib.quote(text)))
+    player.loadfile(url, 1)
 
 def say_temp():
     """ Report temperatures state """
-    say("Температура дома %f" % glob.get('hole_temp'))
+    say("Температура дома " + str(glob.get('T')).replace('.',','))
+    say("Атмосферное давление " +
+        str(glob.get('hole_pressure')).replace('.',',') +
+        " Килопаскаль")
 
 def radio():
     """ On/Off radio """
@@ -77,6 +108,23 @@ def radio():
     else:
         ultra.kill()
         ultra = None
+
+
+def get_T():
+    """ loop for geting temperature form ds18s20 """
+    ds = ds18s20.ds18b20('/sys/bus/w1/devices/10-0008025b6d03/w1_slave')
+    while True:
+        try:
+            T=ds.read_c()
+        except:
+            print("ERROR: can't read from ds18s20")
+            sleep(10)
+            continue
+        print('T='+str(T))
+        if T != glob.get('T'):
+            glob.set( 'T', T)
+            cosm_send('Hole_temp_DC', T)
+        sleep(10)
 
 def onHoleMotion():
     log('Motion in hole')
@@ -108,6 +156,7 @@ def onArduinoLost():
     say("Утеряна связь с Ардуино! Пытаюсь восстановить связь...")
 
 
+
 ####################################################
 #####            main dispatchs               ######
 ####################################################
@@ -126,12 +175,6 @@ def dispatch(line):
         if pressure != glob.get('hole_pressure'):
             glob.set( 'hole_pressure', pressure)
             cosm_send('Hole_pressure', pressure)
-
-    elif line[:2] == b'T=':
-        T = float(line.split(b'=')[1])
-        if T != glob.get('T'):
-            glob.set( 'T', T)
-            cosm_send('DS_temp', T)
 
     elif line == b'hole ON':
         hole_motion.update(1)
@@ -177,6 +220,10 @@ if __name__ == '__main__':
     init_IR_codes()             # init dict: { IR_CODE : function }
     sock_thr = Thread(target = sock_listen, args = ())
     sock_thr.start()
+    ds = Thread(target = get_T, args = ())
+    ds.start()                  # ds18s20 temerature sensor
+    say_thrd = Thread(target = _say_queue, args = ())
+    say_thrd.start()
 
     #####     main loop     #####
     while True:
@@ -184,7 +231,7 @@ if __name__ == '__main__':
             line = ard.read()      # read line from arduino
         except KeyboardInterrupt:
             log('KeyboardInterrupt received. Exit')
-            print('KeyboardInterrupt received. Bye!\n')
+            print('KeyboardInterrupt received. \n')
             sys.exit(0)
         print(line)
         dispatch(line)
