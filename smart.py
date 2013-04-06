@@ -11,6 +11,7 @@ import urllib
 import Queue
 
 import mplayer
+from ultra import Ultra
 
 from cosm import Cosm
 import cosm_config
@@ -27,7 +28,7 @@ hole_motion = objects.MotionSensor()
 IR_codes = dict()                   # Binded funcitions on IR codes
 repeatable_IR = {b'FFE01F', b'FFA857'}          # This IR codes can be repeated
 last_IR = ''                        # Last IR received code
-ultra = None                        # subprocess object for radio player
+ultra = Ultra()
 cron = objects.Crontab()
 cosm = Cosm(cosm_config.FEED_ID, cosm_config.API_KEY)
 user_agent = ("Mozilla/5.0 (Windows NT 6.1; WOW64) "
@@ -43,7 +44,7 @@ def init_IR_codes():
     IR_codes.update({b'FF629D' : say_temp})     # Say temperature status
     IR_codes.update({b'FFA857' : volume_inc})   # increase volume
     IR_codes.update({b'FFE01F' : volume_dec})   # reduce volume
-    IR_codes.update({b'FF906F' : radio})        # On/off radio
+    IR_codes.update({b'FF906F' : ultra.switch})        # On/off radio
 
 def cosm_send(id, value):
     '''Send data to Cosm.com'''
@@ -66,10 +67,8 @@ def _say_queue():
             item = say_queue.get_nowait()
             # item = (text, lang)
         except:
-            print "queue is empty"
             sleep(0.5)
             continue
-        print "quaue has ", item
         _say(item[0],item[1])
         sleep(0.5)
 
@@ -98,17 +97,6 @@ def say_temp():
     say("Атмосферное давление " +
         str(glob.get('hole_pressure')).replace('.',',') +
         " Килопаскаль")
-
-def radio():
-    """ On/Off radio """
-    global ultra
-    if ultra  == None:
-        ultra = subprocess.Popen("mpg123 http://94.25.53.132:80/ultra-128.mp3", shell = True)
-        return
-    else:
-        ultra.kill()
-        ultra = None
-
 
 def get_T():
     """ loop for geting temperature form ds18s20 """
