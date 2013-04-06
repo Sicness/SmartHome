@@ -7,11 +7,9 @@ import socket
 from threading import Thread
 from time import sleep
 import datetime
-import urllib
-import Queue
 
 import mplayer
-from ultra import Ultra
+from sound import *
 
 from cosm import Cosm
 import cosm_config
@@ -31,12 +29,7 @@ last_IR = ''                        # Last IR received code
 ultra = Ultra()
 cron = objects.Crontab()
 cosm = Cosm(cosm_config.FEED_ID, cosm_config.API_KEY)
-user_agent = ("Mozilla/5.0 (Windows NT 6.1; WOW64) "
-                      "AppleWebKit/537.17 "
-                      "(KHTML, like Gecko) Chrome/24.0.1312.60 Safari/537.17")
-player = mplayer.Player(args=('-user-agent', user_agent))  #, '-ao', 'pulse'))
-player.cmd_predix = ''
-say_queue = Queue.Queue()
+alice = Alice()
 
 
 def init_IR_codes():
@@ -61,40 +54,11 @@ def volume_inc(value = 200):
     """ Increase system volume """
     subprocess.Popen("amixer set PCM %d+" % (value), shell = True)
 
-def _say_queue():
-    while True:
-        try:
-            item = say_queue.get_nowait()
-            # item = (text, lang)
-        except:
-            sleep(0.5)
-            continue
-        _say(item[0],item[1])
-        sleep(0.5)
-
-def say(text, language = "ru"):
-    say_queue.put((text, language))
-    print "\""+text+"\" puted"
-
-def _say(text, language = "ru"):
-    """ Text to speech with Google translate """
-    """
-    time = datetime.datetime.now().time()
-    if time < datetime.time(hour = 8) and time > datetime.time(hour=23, munute=30):
-        return
-    cmd = "wget -q -U Mozilla -O /tmp/say.mp3 \"http://translate.google.com/translate_tts?ie=UTF-8&tl=ru&q=%s\" && mpg123 /tmp/say.mp3" % (text)
-    subprocess.Popen(cmd, shell = True)
-    """
-    url = url = (u"http://translate.google.com/"
-                 u"translate_tts?tl={0}&q={1}".format(
-                 language,
-                 urllib.quote(text)))
-    player.loadfile(url, 1)
 
 def say_temp():
     """ Report temperatures state """
-    say("Температура дома " + str(glob.get('T')).replace('.',','))
-    say("Атмосферное давление " +
+    alice.say("Температура дома " + str(glob.get('T')).replace('.',','))
+    alice.say("Атмосферное давление " +
         str(glob.get('hole_pressure')).replace('.',',') +
         " Килопаскаль")
 
@@ -119,10 +83,10 @@ def onHoleMotion():
     return
     if glob.get('noBodyHome') == 1:
         glob.set('noBodyHome', 0)
-        say('Добро пожаловать домой')
-        say('Текущее время '+datetime.datetime.now().strftime("%H %M"))
+        alice.say('Добро пожаловать домой')
+        alice.say('Текущее время '+datetime.datetime.now().strftime("%H %M"))
         say_temp()
-        say("Последний раз дома кто-то был " + glob.get('lastMotion').strftime("%H %M"))
+        alice.say("Последний раз дома кто-то был " + glob.get('lastMotion').strftime("%H %M"))
 
 
 def onHoleMotionOff():
@@ -134,14 +98,14 @@ def onHoleMotionOff():
 
 def noBodyHome():
     """ Called by cron when no motion 3 hours"""
-    say('Кажется никого нет дома')
+    alice.say('Кажется никого нет дома')
     glob.set('noBodyHome',1)
 
 def onArduinoFound():
-    say("Связь с Ардуино установлена!")
+    alice.say("Связь с Ардуино установлена!")
 
 def onArduinoLost():
-    say("Утеряна связь с Ардуино! Пытаюсь восстановить связь...")
+    alice.say("Утеряна связь с Ардуино! Пытаюсь восстановить связь...")
 
 
 
@@ -210,8 +174,6 @@ if __name__ == '__main__':
     sock_thr.start()
     ds = Thread(target = get_T, args = ())
     ds.start()                  # ds18s20 temerature sensor
-    say_thrd = Thread(target = _say_queue, args = ())
-    say_thrd.start()
 
     #####     main loop     #####
     while True:
