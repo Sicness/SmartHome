@@ -49,6 +49,11 @@ class Task:
         self.when = when
         self.do = foo
 
+    def show(self):
+        print "Name: ", self.name,
+        print "\tWhen: ", self.when,
+        print "\tDo: ", self.do
+
 
 class Crontab:
     def __init__(self):
@@ -56,13 +61,17 @@ class Crontab:
         self._thread = Thread(target = self.__check, args = ())
         self._thread.start()
 
-    def add(self, task):
+    def add(self, name, time, foo):
         """ Add new task to cron.
-        Task - object of 'Task' class """
+        Name - str
+        time - datetime
+        foo - pointer to function"""
+        task = Task(name, time, foo)
         for t in self.tasks:
             if t.name == task.name:         # If we alredy have task with this name
                 return -1
         self.tasks.append(task)
+        return 0
 
     def remove(self, name):
         """ Detele task from cron by name """
@@ -72,12 +81,33 @@ class Crontab:
                 found = task
         if found != None:
             self.tasks.remove(found)
+            return 0
+        else:
+            return -1
 
     def isExist(self, name):
         for task in self.tasks:
             if task.name == name:
                 return True
         return False
+
+    def replace(self, name, time, foo):
+        """ Create or replace a new task to cron.
+        Name - str
+        time - datetime
+        foo - pointer to function"""
+        self.remove(name)
+        task = Task(name, time, foo)
+        for t in self.tasks:
+            if t.name == task.name:         # If we alredy have task with this name
+                return -1
+        self.tasks.append(task)
+        return 0
+
+    def ls(self):
+        print "Tasks in cron:"
+        for task in self.tasks:
+            print task.show()
 
     def __check(self):
         """ Cron tick """

@@ -7,6 +7,7 @@ import socket
 from threading import Thread
 from time import sleep
 import datetime
+from datetime import datetime, timedelta
 
 import mplayer
 from sound import *
@@ -84,21 +85,17 @@ def onHoleMotion():
     if glob.get('noBodyHome') == 1:
         glob.set('noBodyHome', 0)
         alice.say('Добро пожаловать домой')
-        alice.say('Текущее время '+datetime.datetime.now().strftime("%H %M"))
+        alice.say('Текущее время ' + datetime.now().strftime("%H %M"))
         say_temp()
         alice.say("Последний раз дома кто-то был " + glob.get('lastMotion').strftime("%H %M"))
 
-
 def onHoleMotionOff():
     glob.set('lastMotion',datetime.datetime.now())
-    if cron.isExist('noBodyHome'):
-        cron.remove('noBodyHome')
-    cron.add(objects.Task('noBodyHome', \
-                          datetime.datetime.now() + datetime.timedelta(hours=3), noBodyHome))
+    cron.replace('noBodyHome', datetime.now() + timedelta(hours=3), noBodyHome)
 
 def noBodyHome():
     """ Called by cron when no motion 3 hours"""
-    alice.say('Кажется никого нет дома')
+    alice.say('Кажется ниКого нет дома')
     glob.set('noBodyHome',1)
 
 def onArduinoFound():
