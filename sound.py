@@ -1,10 +1,13 @@
 from threading import Thread
 from time import sleep
+from datetime import datetime
 import urllib
 import Queue
 
 import mplayer
 
+night_min = time(hour = 23)
+night_max = time(hour = 8)
 
 user_agent = ("Mozilla/5.0 (Windows NT 6.1; WOW64) "
               "AppleWebKit/537.17 "
@@ -19,16 +22,20 @@ class Alice:
         self.thrd.start()
 
     def _say(self, text, lang = "ru"):
+        if self._isNight():
+            return
         url = url = (u"http://translate.google.com/"
                     u"translate_tts?tl={0}&q={1}".format(
-                    lang,
-                    urllib.quote(text)))
+                    lang, urllib.quote(text)))
         self.player.loadfile(url, 1)
 
     def say(self, text, lang = "ru"):
         self.queue.put((text, lang))
 
     def _loop(self):
+        """ Runed in dedicated thread
+        " Takes from queue querty for speech
+        " and sends it to TTS (self._say) """
         while True:
             try:
                 item = self.queue.get_nowait()
@@ -39,6 +46,10 @@ class Alice:
             self._say(item[0],item[1])
             sleep(0.5)
 
+    def _isNight(self):
+        """ Returns True if night right now """
+        now = datetime.now().time()
+        return (now > night_min) or ( now <  night_max)
 
 class Ultra:
     def __init__(self):
