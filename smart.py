@@ -5,10 +5,12 @@ import sys
 import subprocess
 import socket
 from threading import Thread
+import threading
 from time import sleep
 import datetime
 from datetime import datetime, timedelta
 from select import select
+import signal
 
 import mplayer
 from sound import *
@@ -35,6 +37,23 @@ cosm = Cosm(cosm_config.FEED_ID, cosm_config.API_KEY)
 alice = Alice(glob = glob)
 
 
+def signal_handler(signal, frame):
+    log('Time to terminate. Exit')
+    print('Time to terminate. Setting the terminate flag\n')
+    print("Active threads: ",threading.active_count())
+    glob.set('terminate', True)
+    for i in xrange(10):
+        print("Active threads: ",threading.active_count(),
+              ". Wait more %d seconds" % (10 - i))
+        if threading.active_count() == 1:
+            break
+        sleep(1)
+    print "Bye!"
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
+
 def init_IR_codes():
     """ Bind functions on IR codes """
     IR_codes.update({b'FF629D' : say_temp})     # Say temperature status
@@ -44,12 +63,7 @@ def init_IR_codes():
 
 def cosm_send(id, value):
     '''Send data to Cosm.com'''
-    try:
-        cosm.put_data_point(id, value)
-    except KeyboardInterrupt:
-        raise
-    except:
-        print("ERROR: Can't send to cosm.com")
+    cosm.put_data_point(id, value)
 
 def volume_dec(value = 200):
     """ Reduce system volume """
@@ -191,15 +205,6 @@ if __name__ == '__main__':
 
     #####     main loop     #####
     while True:
-        try:
-            line = ard.read()      # read line from arduino
-        except KeyboardInterrupt:
-            log('KeyboardInterrupt received. Exit')
-            print('KeyboardInterrupt received. Setting terimate flag \n')
-            glob.set('terminate', True)
-            for i in xrange(10):
-                print "Waiting for exit ", 10 - i
-                sleep(1)
-            sys.exit(0)
+        line = ard.read()      # read line from arduino
         print(line)
         dispatch(line)

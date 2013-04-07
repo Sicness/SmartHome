@@ -42,9 +42,7 @@ class Arduino:
             line = ''
             try:
                 line = self.s.readline()
-            except KeyboardInterrupt:
-                raise
-            except:
+            except serial.SerialException:
                 err("Can't read from serial: %s" % sys.exc_info()[0])
                 self.connect()
                 continue
