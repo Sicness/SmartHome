@@ -8,6 +8,7 @@ from threading import Thread
 from time import sleep
 import datetime
 from datetime import datetime, timedelta
+from select import select
 
 import mplayer
 from sound import *
@@ -23,14 +24,15 @@ import ds18s20
 
 
 glob = objects.Vars()
+glob.set('terminate', False)
 hole_motion = objects.MotionSensor()
 IR_codes = dict()                   # Binded funcitions on IR codes
 repeatable_IR = {b'FFE01F', b'FFA857'}          # This IR codes can be repeated
 last_IR = ''                        # Last IR received code
 ultra = Ultra()
-cron = objects.Crontab()
+cron = objects.Crontab(glob = glob)
 cosm = Cosm(cosm_config.FEED_ID, cosm_config.API_KEY)
-alice = Alice()
+alice = Alice(glob = glob)
 
 
 def init_IR_codes():
@@ -44,6 +46,8 @@ def cosm_send(id, value):
     '''Send data to Cosm.com'''
     try:
         cosm.put_data_point(id, value)
+    except KeyboardInterrupt:
+        raise
     except:
         print("ERROR: Can't send to cosm.com")
 
@@ -77,7 +81,10 @@ def get_T():
         if T != glob.get('T'):
             glob.set( 'T', T)
             cosm_send('Hole_temp_DC', T)
-        sleep(10)
+        sleep(5)
+        if glob.get('terminate'):
+            print("ds18s20: flound terminate flag. Exit.")
+            return
 
 def onHoleMotion():
     log('Motion in hole')
@@ -90,7 +97,7 @@ def onHoleMotion():
         alice.say("Последний раз дома кто-то был " + glob.get('lastMotion').strftime("%H %M"))
 
 def onHoleMotionOff():
-    glob.set('lastMotion',datetime.datetime.now())
+    glob.set('lastMotion',datetime.now())
     cron.replace('noBodyHome', datetime.now() + timedelta(hours=3), noBodyHome)
 
 def noBodyHome():
@@ -103,7 +110,6 @@ def onArduinoFound():
 
 def onArduinoLost():
     alice.say("Утеряна связь с Ардуино! Пытаюсь восстановить связь...")
-
 
 
 ####################################################
@@ -153,11 +159,22 @@ def sock_listen():
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     srv.bind(("0.0.0.0", 10000))
     srv.listen(1)
+    input = [srv]
     while True:
-                    s, addr = srv.accept()
-                    print('Connection from', addr)
-                    sock_disp_thr = Thread(target = sock_dispatch, args = (s,))
-                    sock_disp_thr.start()
+        inputready,outputready,exceptready = select(input,[],[],2)
+
+        # timeout on select
+        if not inputready:
+            if glob.get('terminate'):
+                print 'sock_listen: flag terminate found. Exit'
+                return
+
+        for s in inputready:
+            if s == srv:
+                s, addr = srv.accept()
+                print('Connection from', addr)
+                sock_disp_thr = Thread(target = sock_dispatch, args = (s,))
+                sock_disp_thr.start()
 
 if __name__ == '__main__':
     log('Smart home started')
@@ -167,7 +184,6 @@ if __name__ == '__main__':
     hole_motion.onOn = onHoleMotion
     hole_motion.onOff = onHoleMotionOff
     init_IR_codes()             # init dict: { IR_CODE : function }
-    glob.set('terminate', False)
     sock_thr = Thread(target = sock_listen, args = ())
     sock_thr.start()
     ds = Thread(target = get_T, args = ())
@@ -179,7 +195,11 @@ if __name__ == '__main__':
             line = ard.read()      # read line from arduino
         except KeyboardInterrupt:
             log('KeyboardInterrupt received. Exit')
-            print('KeyboardInterrupt received. \n')
+            print('KeyboardInterrupt received. Setting terimate flag \n')
+            glob.set('terminate', True)
+            for i in xrange(10):
+                print "Waiting for exit ", 10 - i
+                sleep(1)
             sys.exit(0)
         print(line)
         dispatch(line)

@@ -56,10 +56,11 @@ class Task:
 
 
 class Crontab:
-    def __init__(self):
+    def __init__(self, glob = None):
         self.tasks = list()
         self._thread = Thread(target = self.__check, args = ())
         self._thread.start()
+        self.glob = glob
 
     def add(self, name, time, foo):
         """ Add new task to cron.
@@ -122,3 +123,7 @@ class Crontab:
             for task in remove:
                 self.tasks.remove(task)
             sleep(1)
+            if self.glob is not None:
+                if self.glob.get('terminate'):
+                    print("Crontab: found the terminate flag. Exit.")
+                    return
