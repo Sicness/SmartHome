@@ -1,6 +1,6 @@
 from threading import Thread
 from time import sleep
-from datetime import datetime
+from datetime import datetime, time
 import urllib
 import Queue
 
@@ -14,10 +14,11 @@ user_agent = ("Mozilla/5.0 (Windows NT 6.1; WOW64) "
               "(KHTML, like Gecko) Chrome/24.0.1312.60 Safari/537.17")
 
 class Alice:
-    def __init__(self):
+    def __init__(self, glob = None):
         self.player = mplayer.Player(args=('-user-agent', user_agent))  #, '-ao', 'pulse'))
         self.player.cmd_predix = ''
         self.queue = Queue.Queue()
+        self.glob = glob
         self.thrd = Thread(target = self._loop, args = ())
         self.thrd.start()
 
@@ -37,6 +38,10 @@ class Alice:
         " Takes from queue querty for speech
         " and sends it to TTS (self._say) """
         while True:
+            if self.glob is not None:
+                if self.glob.get('terminate'):
+                    print "Alice: flag terminate found. Exit."
+                    return
             try:
                 item = self.queue.get_nowait()
                 # >>>  item = (text, lang)

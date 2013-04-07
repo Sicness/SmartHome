@@ -167,6 +167,7 @@ if __name__ == '__main__':
     hole_motion.onOn = onHoleMotion
     hole_motion.onOff = onHoleMotionOff
     init_IR_codes()             # init dict: { IR_CODE : function }
+    glob.set('terminate', False)
     sock_thr = Thread(target = sock_listen, args = ())
     sock_thr.start()
     ds = Thread(target = get_T, args = ())
