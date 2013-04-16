@@ -11,9 +11,11 @@ import datetime
 from datetime import datetime, timedelta
 from select import select
 import signal
+import urllib2
 
 import mplayer
 from sound import *
+import RPi.GPIO as GPIO
 
 from cosm import Cosm
 import cosm_config
@@ -63,8 +65,12 @@ def init_IR_codes():
 
 def cosm_send(id, value):
     '''Send data to Cosm.com'''
-    cosm.put_data_point(id, value)
-
+    try:
+        cosm.put_data_point(id, value)
+    except urllib2.HTTPError:
+        err("Cosm: " + e)
+    except urllib2.URLError as e:
+        err("Cosm: " + e)
 def volume_dec(value = 200):
     """ Reduce system volume """
     subprocess.Popen("amixer set PCM %d-" % (value), shell = True)
@@ -102,6 +108,9 @@ def get_T():
 
 def onHoleMotion():
     log('Motion in hole')
+    if alice.isNight():
+        # turn on night light
+        GPIO.output(11, GPIO.HIGH)
     return
     if glob.get('noBodyHome') == 1:
         glob.set('noBodyHome', 0)
@@ -111,6 +120,7 @@ def onHoleMotion():
         alice.say("Последний раз дома кто-то был " + glob.get('lastMotion').strftime("%H %M"))
 
 def onHoleMotionOff():
+    GPIO.output(11, GPIO.LOW)
     glob.set('lastMotion',datetime.now())
     cron.replace('noBodyHome', datetime.now() + timedelta(hours=3), noBodyHome)
 
@@ -165,7 +175,7 @@ def sock_dispatch(s):
     print('sock| ', data)
 
     if data == b'radio':
-        radio()
+        ultra.switch()
     s.sendall(b'OK')
     s.close()
 
@@ -202,6 +212,10 @@ if __name__ == '__main__':
     sock_thr.start()
     ds = Thread(target = get_T, args = ())
     ds.start()                  # ds18s20 temerature sensor
+    # to use Raspberry Pi board pin numbers
+    GPIO.setmode(GPIO.BOARD)
+    # set up GPIO output channel
+    GPIO.setup(11, GPIO.OUT)
 
     #####     main loop     #####
     while True:

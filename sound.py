@@ -23,7 +23,7 @@ class Alice:
         self.thrd.start()
 
     def _say(self, text, lang = "ru"):
-        if self._isNight():
+        if self.isNight():
             return
         url = url = (u"http://translate.google.com/"
                     u"translate_tts?tl={0}&q={1}".format(
@@ -51,7 +51,7 @@ class Alice:
             self._say(item[0],item[1])
             sleep(0.5)
 
-    def _isNight(self):
+    def isNight(self):
         """ Returns True if night right now """
         now = datetime.now().time()
         return (now > night_min) or ( now <  night_max)
