@@ -61,7 +61,9 @@ def init_IR_codes():
     IR_codes.update({b'FF629D' : say_temp})     # Say temperature status
     IR_codes.update({b'FFA857' : volume_inc})   # increase volume
     IR_codes.update({b'FFE01F' : volume_dec})   # reduce volume
-    IR_codes.update({b'FF906F' : ultra.switch})        # On/off radio
+    IR_codes.update({b'FF906F' : toSecureMode})        # Will be noBodyHome
+    IR_codes.update({b'FFC23D' : ultra.switch})        # On/off radio
+    IR_codes.update({b'BF09C35C' : ultra.switch})        # On/off radio (big)
 
 def cosm_send(id, value):
     '''Send data to Cosm.com'''
@@ -111,7 +113,6 @@ def onHoleMotion():
     if alice.isNight():
         # turn on night light
         GPIO.output(11, GPIO.HIGH)
-    return
     if glob.get('noBodyHome') == 1:
         glob.set('noBodyHome', 0)
         alice.say('Добро пожаловать домой')
@@ -128,6 +129,15 @@ def noBodyHome():
     """ Called by cron when no motion 3 hours"""
     alice.say('Кажется ниКого нет дома')
     glob.set('noBodyHome',1)
+
+def toSecureMode():
+    """ User function. Called when all gonna leave home """
+    alice.say('Через минуту перейду в спящий режимф.'
+              'Приятного время припровождения!')
+    cron.add('toSecureMode', datetime.now() + timedelta(minutes = 1), noBodyHome)
+
+
+
 
 def onArduinoFound():
     alice.say("Связь с Ардуино установлена!")
