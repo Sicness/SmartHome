@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from threading import Thread
 from time import sleep
 from datetime import datetime, time
@@ -55,6 +57,16 @@ class Alice:
         """ Returns True if night right now """
         now = datetime.now().time()
         return (now > night_min) or ( now <  night_max)
+
+    def now(self, time = None):
+        """ now -> str
+        time is datedate.datetime.now.time() """
+        if time is None:
+            time = datetime.now().time()
+        if time.minute < 10:
+            return time.strftime("%H ноль %m")
+        else:
+            return time.strftime("%H %M")
 
 class Ultra:
     def __init__(self):

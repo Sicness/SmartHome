@@ -85,9 +85,8 @@ def volume_inc(value = 200):
 def say_temp():
     """ Report temperatures state """
     alice.say("Температура дома " + str(glob.get('T')).replace('.',','))
-    alice.say("Атмосферное давление " +
-        str(glob.get('hole_pressure')).replace('.',',') +
-        " Килопаскаль")
+    #alice.say("Атмосферное давление " +
+    #    str(glob.get('hole_pressure')).replace('.',',') +" Килопаскаль")
 
 def get_T():
     """ loop for geting temperature form ds18s20 """
@@ -116,9 +115,9 @@ def onHoleMotion():
     if glob.get('noBodyHome') == 1:
         glob.set('noBodyHome', 0)
         alice.say('Добро пожаловать домой')
-        alice.say('Текущее время ' + datetime.now().strftime("%H %M"))
+        alice.say('Текущее время ' + alice.now())
         say_temp()
-        alice.say("Последний раз дома кто-то был " + glob.get('lastMotion').strftime("%H %M"))
+        alice.say("Последний раз дома кто-то был " + alice.now(glob.get('lastMotion')))
 
 def onHoleMotionOff():
     GPIO.output(11, GPIO.LOW)
@@ -132,10 +131,8 @@ def noBodyHome():
 
 def toSecureMode():
     """ User function. Called when all gonna leave home """
-    alice.say('Через минуту перейду в спящий режимф.'
-              'Приятного время припровождения!')
+    alice.say('Сторожевой режим будет включен через одну минуту. Приятного время препровождения!')
     cron.add('toSecureMode', datetime.now() + timedelta(minutes = 1), noBodyHome)
-
 
 
 
