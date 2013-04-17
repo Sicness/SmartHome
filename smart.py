@@ -69,7 +69,7 @@ def cosm_send(id, value):
     '''Send data to Cosm.com'''
     try:
         cosm.put_data_point(id, value)
-    except urllib2.HTTPError:
+    except urllib2.HTTPError as e:
         err("Cosm: " + e)
     except urllib2.URLError as e:
         err("Cosm: " + e)
