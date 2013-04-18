@@ -70,9 +70,9 @@ def cosm_send(id, value):
     try:
         cosm.put_data_point(id, value)
     except urllib2.HTTPError as e:
-        err("Cosm: " + e)
+        err("Cosm: " + str(e))
     except urllib2.URLError as e:
-        err("Cosm: " + e)
+        err("Cosm: " + str(e))
 def volume_dec(value = 200):
     """ Reduce system volume """
     subprocess.Popen("amixer set PCM %d-" % (value), shell = True)
