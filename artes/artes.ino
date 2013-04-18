@@ -5,6 +5,7 @@
 
 #define PMSHole 2
 #define PMSRoom 7
+#define PMSKitchen 4
 #define MOTIONTIMEOUT 15000
 
 void setup();
@@ -15,7 +16,6 @@ void OnMotionChenged();
 IRrecv irrecv(8);
 Adafruit_MPL115A2 mpl115a2;
 long mpl115a2_lastTime = 0;
-byte motionSensHoleLast, motionSensRoomLast;
 decode_results results;
 
 
@@ -25,84 +25,21 @@ class MotionSens
     long _lastTime; 
     byte _state;
     byte _pin;
+    char* _name;
   public:
-    MotionSens(uint8_t pin)
-    {
-      pinMode(pin, INPUT);
-      _pin = pin;
-      _state = LOW;
-      _lastTime = millis();      
-    }
-    byte check();
+    MotionSens(char* name, uint8_t pin);
+    void check();
 };
 
-byte MotionSens::check()
-{
-  byte new_state = digitalRead(_pin);
-  Serial.print("read: ");
-  Serial.write(new_state + 0x30);
-  Serial.println("");
-  
-  if ((_state == HIGH) && (new_state == LOW) && (millis() - _lastTime > MOTIONTIMEOUT))
-    _state = new_state;
-  
-  if ((_state == LOW) && (new_state == HIGH))
-  {
-    _state = new_state;
-    _lastTime = millis();
-  }
-
-  if ((_state == HIGH) && (new_state == HIGH))
-        _lastTime = millis();
-  
-  return _state;
-}
-
-MotionSens motionRoom(PMSRoom);
-MotionSens motionHole(PMSHole);
-//MotionSens kitchen;
-
-void MotionCheck()
-{
-  byte newstate;
- 
-  newstate = motionHole.check();
-  Serial.print("MoH: "); Serial.write(motionSensHoleLast + 0x30);
-  Serial.write(newstate + 0x30); Serial.println("");
-  
-  if (newstate != motionSensHoleLast)
-  {
-    Serial.print("Motion in hole ");
-    if (newstate == HIGH)
-      Serial.println("YES");
-    else
-      Serial.println("NO");
-    motionSensHoleLast = newstate;
-  }
-  
-  newstate = motionRoom.check();
-    Serial.print("MoR: "); Serial.write(motionSensRoomLast+0x30);
-  Serial.write(newstate+0x30); Serial.println("");
-  if (newstate != motionSensRoomLast)
-  {
-    Serial.print("Motion in room ");
-    if (newstate == HIGH)
-      Serial.println("YES");
-    else
-      Serial.println("NO");
-    motionSensRoomLast = newstate;
-  }
-  delay(1000);
-}
+MotionSens motionRoom("room", PMSRoom);
+MotionSens motionHole("hole", PMSHole);
+MotionSens motionKitchen("kitchen", PMSKitchen);
 
 void OnMotionChenged();
 void IRCheck();
 
 void setup()
 {
-  motionSensHoleLast = motionHole.check();
-  motionSensRoomLast = motionRoom.check();
-  
   Serial.begin(9600);
   irrecv.enableIRIn();
   mpl115a2.begin();
@@ -111,7 +48,9 @@ void setup()
 void loop()
 {
   IRCheck();
-  MotionCheck();
+  motionHole.check();
+  motionRoom.check();
+  motionKitchen.check();
   mpl115a2Check();
 }
 
@@ -121,6 +60,47 @@ void IRCheck()
   {
     Serial.println(results.value, HEX);
     irrecv.resume(); // Receive the next value 
+  }
+}
+
+MotionSens::MotionSens(char* name, uint8_t pin)
+{
+      pinMode(pin, INPUT);
+      _pin = pin;
+      _state = LOW;
+      _lastTime = millis();    
+      _name = name;  
+}
+
+void MotionSens::check()
+{
+  byte new_state = digitalRead(_pin);
+  byte changed = false;
+  
+  if ((_state == HIGH) && (new_state == LOW) && (millis() - _lastTime > MOTIONTIMEOUT))
+  {
+      _state = new_state;
+      changed = true;
+  }
+  
+  if ((_state == LOW) && (new_state == HIGH))
+  {
+    _state = new_state;
+    changed = true;
+    _lastTime = millis();
+  }
+
+  if ((_state == HIGH) && (new_state == HIGH))
+        _lastTime = millis();
+  
+  if (changed)
+  {
+    Serial.print("Motion in ");
+    Serial.print(_name);
+    if (_state == HIGH)
+      Serial.println(" YES");
+    else
+      Serial.println(" NO");
   }
 }
 
