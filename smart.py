@@ -30,6 +30,7 @@ import ds18s20
 glob = objects.Vars()
 glob.set('terminate', False)
 hole_motion = objects.MotionSensor()
+room_motion = objects.MotionSensor()
 IR_codes = dict()                   # Binded funcitions on IR codes
 repeatable_IR = {b'FFE01F', b'FFA857'}          # This IR codes can be repeated
 last_IR = ''                        # Last IR received code
@@ -161,12 +162,20 @@ def dispatch(line):
         if pressure != glob.get('hole_pressure'):
             glob.set( 'hole_pressure', pressure)
             cosm_send('Hole_pressure', pressure)
-
-    elif line == b'hole ON':
-        hole_motion.update(1)
-    elif line == b'hole OFF':
-        hole_motion.update(0)
-
+    #Motion in room YES
+    elif line[:10] == b'Motion in ':
+        t = line.split(' ')
+        glob.set('lastMotion',datetime.now())
+        if t[2] == b'hole':
+            if t[3] == b'YES':
+                hole_motion.update(1)
+            else:
+                hole_motion.update(0)
+        if t[2] == b'room':
+            if t[3] == b'YES':
+                room_motion.update(1)
+            else:
+                room_motion.update(0)
 
     # cheack if it's 'repeat' IR code and this code repeatable
     elif (line == b'FFFFFFFF') and ( last_IR in repeatable_IR):
