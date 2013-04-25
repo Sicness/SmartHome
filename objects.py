@@ -3,8 +3,8 @@
 import datetime
 from threading import Thread
 from time import sleep
+import subprocess
 
-import RPi.GPIO as GPIO
 
 LIGHT_MODE_AUTO = 1
 LIGHT_MOTE_MANUAL = 0
@@ -132,13 +132,12 @@ class Crontab:
                     print("Crontab: found the terminate flag. Exit.")
                     return
 
-
 class gpioLight:
     def __init__(self, pin, state = 0, mode = LIGHT_MOTE_MANUAL):
-        self._pin = pin
+        #self._pin = pin
         # to use Raspberry Pi board pin numbers
-        GPIO.setmode(GPIO.BOARD)
-        GPIO.setup(self._pin, GPIO.OUT)
+        #GPIO.setmode(GPIO.BOARD)
+        #GPIO.setup(self._pin, GPIO.OUT)
         self._mode = mode
         if self._mode == LIGHT_MOTE_MANUAL:
             self.setManualState(state)
@@ -147,11 +146,10 @@ class gpioLight:
 
     def _set(self, state):
         self._state = state
-        self._autoState = state
         if state == 1:
-            GPIO.output(self._pin, GPIO.HIGH)
+            subprocess.call(["gpio_11", "1"])
         else:
-            GPIO.output(self._pin, GPIO.LOW)
+            subprocess.call(["gpio_11", "0"])
 
     def setAutoState(self, state):
         """ Turn on/off light (1,0)"""

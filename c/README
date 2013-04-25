@@ -1,0 +1,4 @@
+This binarys will be used for communication with gpio on rasbperry pi without sudo for main python threads.
+On this binarys should be seted sid bit for runnig without sudo. It's most secure mode for me.
+
+Do not foget library: http://www.airspayce.com/mikem/bcm2835/

@@ -15,7 +15,6 @@ import urllib2
 
 import mplayer
 from sound import *
-import RPi.GPIO as GPIO
 
 from cosm import Cosm
 import cosm_config
