@@ -23,7 +23,6 @@ from log import log
 from log import err
 import arduino
 import objects
-import config
 import ds18s20
 
 
@@ -38,6 +37,7 @@ ultra = Ultra()
 cron = objects.Crontab(glob = glob)
 cosm = Cosm(cosm_config.FEED_ID, cosm_config.API_KEY)
 alice = Alice(glob = glob)
+hole_night_light = objects.gpioLight(11, mode = objects.LIGHT_MODE_AUTO)
 
 
 def signal_handler(signal, frame):
@@ -65,6 +65,9 @@ def init_IR_codes():
     IR_codes.update({b'FF906F' : toSecureMode})        # Will be noBodyHome
     IR_codes.update({b'FFC23D' : ultra.switch})        # On/off radio
     IR_codes.update({b'BF09C35C' : ultra.switch})        # On/off radio (big)
+    IR_codes.update( {b'24014B0' : holeNightLightAuto} )        # On/off radio (big)
+    IR_codes.update( {b'8FC212DB' : hole_night_light.setManualStateOff} )        # On/off radio (big)
+    IR_codes.update( {b'7960556F' : hole_night_light.setManualStateOn} )        # On/off radio (big)
 
 def cosm_send(id, value):
     '''Send data to Cosm.com'''
@@ -112,7 +115,7 @@ def onHoleMotion():
     log('Motion in hole')
     if alice.isNight():
         # turn on night light
-        GPIO.output(11, GPIO.HIGH)
+        hole_night_light.setAutoState(1)
     if glob.get('noBodyHome') == 1:
         glob.set('noBodyHome', 0)
         alice.say('Добро пожаловать домой')
@@ -121,7 +124,7 @@ def onHoleMotion():
         alice.say("Последний раз дома кто-то был " + alice.now(glob.get('lastMotion')))
 
 def onHoleMotionOff():
-    GPIO.output(11, GPIO.LOW)
+    hole_night_light.setAutoState(0)
     glob.set('lastMotion',datetime.now())
     cron.replace('noBodyHome', datetime.now() + timedelta(hours=3), noBodyHome)
 
@@ -135,7 +138,9 @@ def toSecureMode():
     alice.say('Сторожевой режим будет включен через одну минуту. Приятного время препровождения!')
     cron.add('toSecureMode', datetime.now() + timedelta(minutes = 1), noBodyHome)
 
-
+def holeNightLightAuto():
+    alice.say("Ночное освещение в холе переведен автоматический режим")
+    hole_night_light.setMode(objects.LIGHT_MODE_AUTO)
 
 def onArduinoFound():
     alice.say("Связь с Ардуино установлена!")
@@ -220,8 +225,7 @@ def sock_listen():
 
 if __name__ == '__main__':
     log('Smart home started')
-
-    #####     Objects configuration      ######
+#####     Objects configuration      ######
     ard = arduino.Arduino('/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A80090sP-if00-port0', onFound = onArduinoFound, onLost = onArduinoLost)
     hole_motion.onOn = onHoleMotion
     hole_motion.onOff = onHoleMotionOff
@@ -230,10 +234,6 @@ if __name__ == '__main__':
     sock_thr.start()
     ds = Thread(target = get_T, args = ())
     ds.start()                  # ds18s20 temerature sensor
-    # to use Raspberry Pi board pin numbers
-    GPIO.setmode(GPIO.BOARD)
-    # set up GPIO output channel
-    GPIO.setup(11, GPIO.OUT)
 
     #####     main loop     #####
     while True:

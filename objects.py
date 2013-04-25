@@ -4,6 +4,11 @@ import datetime
 from threading import Thread
 from time import sleep
 
+import RPi.GPIO as GPIO
+
+LIGHT_MODE_AUTO = 1
+LIGHT_MOTE_MANUAL = 0
+
 class Vars:
     def __init__(self):
         """ Class for global vars """
@@ -53,7 +58,6 @@ class Task:
         print "Name: ", self.name,
         print "\tWhen: ", self.when,
         print "\tDo: ", self.do
-
 
 class Crontab:
     def __init__(self, glob = None):
@@ -127,3 +131,49 @@ class Crontab:
                 if self.glob.get('terminate'):
                     print("Crontab: found the terminate flag. Exit.")
                     return
+
+
+class gpioLight:
+    def __init__(self, pin, state = 0, mode = LIGHT_MOTE_MANUAL):
+        self._pin = pin
+        # to use Raspberry Pi board pin numbers
+        GPIO.setmode(GPIO.BOARD)
+        GPIO.setup(self._pin, GPIO.OUT)
+        self._mode = mode
+        if self._mode == LIGHT_MOTE_MANUAL:
+            self.setManualState(state)
+        else:
+            self.setAutoState(state)
+
+    def _set(self, state):
+        self._state = state
+        self._autoState = state
+        if state == 1:
+            GPIO.output(self._pin, GPIO.HIGH)
+        else:
+            GPIO.output(self._pin, GPIO.LOW)
+
+    def setAutoState(self, state):
+        """ Turn on/off light (1,0)"""
+        self._autoState = state
+        if self._mode == LIGHT_MOTE_MANUAL:
+            return
+        self._set(state)
+
+    def setManualState(self, state):
+        self._mode = LIGHT_MOTE_MANUAL
+        self._set(state)
+
+    def setManualStateOff(self):
+        self.setManualState(0)
+
+    def setManualStateOn(self):
+        self.setManualState(1)
+
+    def setMode(self, mode):
+            self._mode = mode
+            if mode == LIGHT_MODE_AUTO:
+                self._set(self._autoState)
+
+    def getMode(self):
+        return self._mode
