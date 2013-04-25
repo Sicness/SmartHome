@@ -165,7 +165,6 @@ def dispatch(line):
     #Motion in room YES
     elif line[:10] == b'Motion in ':
         t = line.split(' ')
-        glob.set('lastMotion',datetime.now())
         if t[2] == b'hole':
             if t[3] == b'YES':
                 hole_motion.update(1)
@@ -176,6 +175,9 @@ def dispatch(line):
                 room_motion.update(1)
             else:
                 room_motion.update(0)
+        if t[3] == b'NO':
+            glob.set('lastMotion',datetime.now())
+
 
     # cheack if it's 'repeat' IR code and this code repeatable
     elif (line == b'FFFFFFFF') and ( last_IR in repeatable_IR):
