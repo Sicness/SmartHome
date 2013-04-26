@@ -29,6 +29,7 @@ import ds18s20
 
 glob = objects.Vars()
 glob.set('terminate', False)
+glob.set('threads', list())
 hole_motion = objects.MotionSensor()
 room_motion = objects.MotionSensor()
 IR_codes = dict()                   # Binded funcitions on IR codes
@@ -239,21 +240,44 @@ def sock_listen():
                 sock_disp_thr = Thread(target = sock_dispatch, args = (s,))
                 sock_disp_thr.start()
 
+def arduino_listen():
+    while True:
+        if glob.get('terminate'):
+            print 'arduino_listen: found terminate flag. Exit'
+            return
+
+        line = ard.read()       # read line from arduino
+        if line == '':          # if serial timeout is reached
+            continue
+        print(line)
+        dispatch(line)
+
 if __name__ == '__main__':
     #log('Smart home started')
     getWeather()
 #####     Objects configuration      ######
-    ard = arduino.Arduino('/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A80090sP-if00-port0', onFound = onArduinoFound, onLost = onArduinoLost)
+    ard = arduino.Arduino('/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A80090sP-if00-port0',
+                          onFound = onArduinoFound, onLost = onArduinoLost)
     hole_motion.onOn = onHoleMotion
     hole_motion.onOff = onHoleMotionOff
     init_IR_codes()             # init dict: { IR_CODE : function }
-    sock_thr = Thread(target = sock_listen, args = ())
+    ### Threads creating ###
+    sock_thr = Thread(target = sock_listen, args = (), name = "sock_thr")
     sock_thr.start()
-    ds = Thread(target = get_T, args = ())
+    glob.get('threads').append(sock_thr)
+    ard_thr = Thread(target = arduino_listen, args = (), name = "ard_thr")
+    ard_thr.start()
+    glob.get('threads').append(ard_thr)
+    ds = Thread(target = get_T, args = (), name = "ds")
     ds.start()                  # ds18s20 temerature sensor
+    glob.get('threads').append(ds)
 
     #####     main loop     #####
     while True:
-        line = ard.read()      # read line from arduino
-        print(line)
-        dispatch(line)
+        for th in glob.get('threads'):
+            if th.isAlive() == False:
+                print "WARNING: Thread with name %s is DEAD!" % (th.getName())
+                print "  Resurrecting..."
+                th.start()
+        sleep(3)
+        # Here should be check of threads

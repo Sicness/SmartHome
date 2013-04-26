@@ -21,8 +21,9 @@ class Alice:
         self.player.cmd_predix = ''
         self.queue = Queue.Queue()
         self.glob = glob
-        self.thrd = Thread(target = self._loop, args = ())
+        self.thrd = Thread(target = self._loop, args = (), name = "alice")
         self.thrd.start()
+        self.glob.get('threads').append(self.thrd)
 
     def _say(self, text, lang = "ru"):
         if self.isNight():

@@ -19,7 +19,7 @@ class Vars:
         if var in self.vars:
             return self.vars[var]
         else:
-            return ''
+            return None
 
     def set(self, name, value):
         """ Set value of global var """
@@ -28,7 +28,6 @@ class Vars:
     def exist(self, var):
         """ return True if global var exist """
         return var in self.vars
-
 
 class MotionSensor:
     def __init__(self, state = 0):
@@ -62,9 +61,10 @@ class Task:
 class Crontab:
     def __init__(self, glob = None):
         self.tasks = list()
-        self._thread = Thread(target = self.__check, args = ())
-        self._thread.start()
         self.glob = glob
+        self._thread = Thread(target = self.__check, args = (), name = "crontab")
+        self._thread.start()
+        self.glob.get('threads').append(self._thread)
 
     def add(self, name, time, foo):
         """ Add new task to cron.

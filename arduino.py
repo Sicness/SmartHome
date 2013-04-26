@@ -16,7 +16,7 @@ class Arduino:
     def connect(self):
         while True:
             try:
-                self.s = serial.Serial(self.adr, self.baudrate)
+                self.s = serial.Serial(self.adr, self.baudrate, timeout=2)
             except:
                 if self._connected == True:
                     err("Loose connection with Serail %s:%s %s" % (self.adr, self.baudrate, sys.exc_info()[0]))
@@ -39,7 +39,6 @@ class Arduino:
     def read(self):
         """ Read line from Serial with out \r\n """
         while True:
-            line = ''
             try:
                 line = self.s.readline()
             except serial.SerialException:
