@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # -*- coding: UTF-8 -*-
 
 import os
@@ -15,6 +16,7 @@ import urllib2
 
 import mplayer
 from sound import *
+import feedparser   # for weather parser
 
 from cosm import Cosm
 import cosm_config
@@ -84,12 +86,27 @@ def volume_inc(value = 200):
     """ Increase system volume """
     subprocess.Popen("amixer set PCM %d+" % (value), shell = True)
 
+def getWeather():
+    cron.replace('getWeather', datetime.now() + timedelta(minutes=30), getWeather)
+    try:
+        d=feedparser.parse('http://weather.yahooapis.com/forecastrss?w=2123272&u=c')
+    except:
+        raise
+    res = dict()
+    res.update({'t' : int(d['items'][0]['yweather_condition']['temp'])})
+    res.update({'chill' : int(d['feed']['yweather_wind']['chill'])})
+    res.update({'wind_speed' : round(float(d['feed']['yweather_wind']['speed']) / 3.6, 1)})
+    res.update({'sunset' : d['feed']['yweather_astronomy']['sunset']})
+    res.update({'sunrise' : d['feed']['yweather_astronomy']['sunrise']})
+    glob.set('weather', res)
 
 def say_temp():
     """ Report temperatures state """
+    print glob.get('weather')
+    alice.say('Температура на улице ' + str(glob.get('weather')['t']))
+    alice.say('Температура комфорта' + str(glob.get('weather')['chill']))
+    alice.say('Скорость ветра' + str(glob.get('weather')['wind_speed']))
     alice.say("Температура дома " + str(glob.get('T')).replace('.',','))
-    #alice.say("Атмосферное давление " +
-    #    str(glob.get('hole_pressure')).replace('.',',') +" Килопаскаль")
 
 def get_T():
     """ loop for geting temperature form ds18s20 """
@@ -223,7 +240,8 @@ def sock_listen():
                 sock_disp_thr.start()
 
 if __name__ == '__main__':
-    log('Smart home started')
+    #log('Smart home started')
+    getWeather()
 #####     Objects configuration      ######
     ard = arduino.Arduino('/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A80090sP-if00-port0', onFound = onArduinoFound, onLost = onArduinoLost)
     hole_motion.onOn = onHoleMotion
