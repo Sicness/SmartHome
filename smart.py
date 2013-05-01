@@ -40,6 +40,7 @@ cron = objects.Crontab(glob = glob)
 cosm = Cosm(cosm_config.FEED_ID, cosm_config.API_KEY)
 alice = Alice(glob = glob)
 hole_night_light = objects.gpioLight(11, mode = objects.LIGHT_MODE_AUTO)
+hole_light = objects.nooLite(0)     # USB NooLite on channale 0
 
 
 def signal_handler(signal, frame):
@@ -61,15 +62,24 @@ signal.signal(signal.SIGTERM, signal_handler)
 
 def init_IR_codes():
     """ Bind functions on IR codes """
-    IR_codes.update({b'FF629D' : say_temp})     # Say temperature status
-    IR_codes.update({b'FFA857' : volume_inc})   # increase volume
-    IR_codes.update({b'FFE01F' : volume_dec})   # reduce volume
-    IR_codes.update({b'FF906F' : toSecureMode})        # Will be noBodyHome
-    IR_codes.update({b'FFC23D' : ultra.switch})        # On/off radio
-    IR_codes.update({b'BF09C35C' : ultra.switch})        # On/off radio (big)
-    IR_codes.update( {b'24014B0' : holeNightLightAuto} )        # On/off radio (big)
-    IR_codes.update( {b'8FC212DB' : hole_night_light.setManualStateOff} )        # On/off radio (big)
-    IR_codes.update( {b'7960556F' : hole_night_light.setManualStateOn} )        # On/off radio (big)
+    IR_codes.update( {b'FF629D' : say_temp} )     # Say temperature status
+    IR_codes.update( {b'FFA857' : volume_inc} )   # increase volume
+    IR_codes.update( {b'FFE01F' : volume_dec} )   # reduce volume
+    IR_codes.update( {b'FF906F' : toSecureMode} )       # Will be noBodyHome
+    IR_codes.update( {b'FFC23D' : ultra.switch} )       # On/off radio
+    IR_codes.update( {b'BF09C35C' : ultra.switch} )     # On/off radio (big)
+    IR_codes.update( {b'8BE68656' : holeNightLightAuto} )
+    IR_codes.update( {b'B21F28AE' : hole_night_light.setManualStateOff} )
+    IR_codes.update( {b'A6B1096A' : hole_night_light.setManualStateOn} )
+    IR_codes.update( {b'24014B0' : holeLightAuto} )
+    IR_codes.update( {b'8FC212DB' : hole_light.setManualStateOff} )
+    IR_codes.update( {b'7960556F' : hole_light.setManualStateOn} )
+    IR_codes.update( {b'FF10EF' : holeNightLightAuto} )
+    IR_codes.update( {b'FF38C7' : hole_night_light.setManualStateOff} )
+    IR_codes.update( {b'FF5AA5' : hole_night_light.setManualStateOn} )
+    IR_codes.update( {b'FF30CF' : holeLightAuto} )
+    IR_codes.update( {b'FF18E7' : hole_light.setManualStateOff} )
+    IR_codes.update( {b'FF7A85' : hole_light.setManualStateOn} )
 
 def cosm_send(id, value):
     '''Send data to Cosm.com'''
@@ -130,6 +140,7 @@ def get_T():
 
 def onHoleMotion():
     log('Motion in hole')
+    hole_light.setAutoState(1)
     if alice.isNight():
         # turn on night light
         hole_night_light.setAutoState(1)
@@ -141,6 +152,7 @@ def onHoleMotion():
         alice.say("Последний раз дома кто-то был " + alice.now(glob.get('lastMotion')))
 
 def onHoleMotionOff():
+    hole_light.setAutoState(0)
     hole_night_light.setAutoState(0)
     glob.set('lastMotion',datetime.now())
     cron.replace('noBodyHome', datetime.now() + timedelta(hours=3), noBodyHome)
@@ -158,6 +170,10 @@ def toSecureMode():
 def holeNightLightAuto():
     alice.say("Ночное освещение в холе переведен автоматический режим")
     hole_night_light.setMode(objects.LIGHT_MODE_AUTO)
+
+def holeLightAuto():
+    alice.say("Свет в холе переведен автоматический режим")
+    hole_light.setMode(objects.LIGHT_MODE_AUTO)
 
 def onArduinoFound():
     alice.say("Связь с Ардуино установлена!")

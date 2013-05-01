@@ -5,9 +5,11 @@ from threading import Thread
 from time import sleep
 import subprocess
 
+import noolite
+
 
 LIGHT_MODE_AUTO = 1
-LIGHT_MOTE_MANUAL = 0
+LIGHT_MODE_MANUAL = 0
 
 class Vars:
     def __init__(self):
@@ -132,14 +134,17 @@ class Crontab:
                     print("Crontab: found the terminate flag. Exit.")
                     return
 
+nooLiteCtr = noolite.NooLite()
+
 class gpioLight:
-    def __init__(self, pin, state = 0, mode = LIGHT_MOTE_MANUAL):
+    def __init__(self, pin, state = 0, mode = LIGHT_MODE_MANUAL):
         #self._pin = pin
         # to use Raspberry Pi board pin numbers
         #GPIO.setmode(GPIO.BOARD)
         #GPIO.setup(self._pin, GPIO.OUT)
         self._mode = mode
-        if self._mode == LIGHT_MOTE_MANUAL:
+        self._autoState = state
+        if self._mode == LIGHT_MODE_MANUAL:
             self.setManualState(state)
         else:
             self.setAutoState(state)
@@ -154,12 +159,12 @@ class gpioLight:
     def setAutoState(self, state):
         """ Turn on/off light (1,0)"""
         self._autoState = state
-        if self._mode == LIGHT_MOTE_MANUAL:
+        if self._mode == LIGHT_MODE_MANUAL:
             return
         self._set(state)
 
     def setManualState(self, state):
-        self._mode = LIGHT_MOTE_MANUAL
+        self._mode = LIGHT_MODE_MANUAL
         self._set(state)
 
     def setManualStateOff(self):
@@ -175,3 +180,20 @@ class gpioLight:
 
     def getMode(self):
         return self._mode
+
+class nooLite(gpioLight):
+    def __init__(self, ch, state = 0, mode = LIGHT_MODE_MANUAL):
+        self._ch = ch
+        self._mode = mode
+        self._autoState = state
+        if self._mode == LIGHT_MODE_MANUAL:
+            self.setManualState(state)
+        else:
+            self.setAutoState(state)
+
+    def _set(self, state):
+        self._state = state
+        if state == 1:
+            nooLiteCtr.on(self._ch)
+        else:
+            nooLiteCtr.off(self._ch)
