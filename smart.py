@@ -115,7 +115,8 @@ def say_temp():
     """ Report temperatures state """
     print glob.get('weather')
     alice.say('Температура на улице ' + str(glob.get('weather')['t']))
-    alice.say('Температура комфорта' + str(glob.get('weather')['chill']))
+    if glob.get('weather')['t'] != glob.get('weather')['chill']:
+        alice.say('Температура комфорта' + str(glob.get('weather')['chill']))
     alice.say('Скорость ветра' + str(glob.get('weather')['wind_speed']))
     alice.say("Температура дома " + str(glob.get('T')).replace('.',','))
 

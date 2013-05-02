@@ -52,7 +52,7 @@ class Alice:
                 sleep(0.5)
                 continue
             self._say(item[0],item[1])
-            sleep(0.5)
+            sleep(0.6)
 
     def isNight(self):
         """ Returns True if night right now """
