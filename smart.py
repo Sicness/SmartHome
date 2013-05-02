@@ -154,7 +154,7 @@ def onHoleMotion():
 
 def onHoleMotionOff():
     hole_light.setAutoState(0)
-    hole_night_light.setAutoState(0)
+    cron.add('holeLightTurnOff', datetime.now() + timedelta(seconds = 7), holeLightTurnOff)
     glob.set('lastMotion',datetime.now())
     cron.replace('noBodyHome', datetime.now() + timedelta(hours=3), noBodyHome)
 
@@ -176,6 +176,8 @@ def holeLightAuto():
     alice.say("Свет в холе переведен автоматический режим")
     hole_light.setMode(objects.LIGHT_MODE_AUTO)
 
+def holeLightTurnOff():
+    hole_night_light.setAutoState(0)
 def onArduinoFound():
     alice.say("Связь с Ардуино установлена!")
 
