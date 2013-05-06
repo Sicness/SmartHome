@@ -193,13 +193,21 @@ def dispatch(line):
     """ Parse serial from Arduino """
     global last_IR
     if line[:5] == b'Temp=':
-        T = float(line.split(b'=')[1])
+        try:
+            T = float(line.split(b'=')[1])
+        except:
+            err("Can't convert hole_temp to float")
+            return
         if T != glob.get('Hole_temp'):
             glob.set( 'hole_temp', T)
             cosm_send('Hole_temp', T)
 
     elif line[:9] == b'Pressure=':
-        pressure = float(line.split(b'=')[1])
+        try:
+            pressure = float(line.split(b'=')[1])
+        except:
+            err("Can't convert pressure to float")
+            return
         if pressure != glob.get('hole_pressure'):
             glob.set( 'hole_pressure', pressure)
             cosm_send('Hole_pressure', pressure)
